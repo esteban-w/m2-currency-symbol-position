@@ -1,6 +1,13 @@
 {
   "name": "ew/magento2-currency-symbol-position",
   "description": "Module that allows setting the currency symbol position.",
+  "keywords": [
+    "magento 2",
+    "magento 2 module",
+    "magento 2 free module",
+    "magento 2 currency symbol",
+    "magento 2 currency symbol position"
+  ],
   "type": "magento2-module",
   "version": "1.0.0",
   "authors": [{
