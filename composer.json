@@ -1,0 +1,28 @@
+{
+  "name": "ew/magento2-currency-symbol-position",
+  "description": "Module that allows setting the currency symbol position.",
+  "type": "magento2-module",
+  "version": "1.0.0",
+  "authors": [{
+    "name": "EW",
+    "email": "info@ew-digital.com"
+  }],
+  "license": [
+    "MIT"
+  ],
+  "require": {
+    "php": ">=8",
+    "magento/framework": ">=103",
+    "magento/module-directory":  ">=100",
+    "magento/module-store": ">=101",
+    "psr/log": ">=1"
+  },
+  "autoload": {
+    "files": [
+      "registration.php"
+    ],
+    "psr-4": {
+      "EW\\CurrencySymbolPosition\\": ""
+    }
+  }
+}
