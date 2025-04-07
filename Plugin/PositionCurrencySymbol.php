@@ -14,6 +14,9 @@ use Psr\Log\LoggerInterface;
 class PositionCurrencySymbol
 {
     const XML_PATH_CURRENCY_SYMBOL_POSITION = 'currency/options/symbol_position';
+    const POSITION_LEFT = 'left';
+    const POSITION_RIGHT = 'right';
+    const POSITION_DEFAULT = 'default';
 
     /**
      * @param CurrencyInterface $localeCurrency
@@ -38,37 +41,57 @@ class PositionCurrencySymbol
     {
         try {
             $currencySymbol = $this->localeCurrency->getCurrency($subject->getCode())->getSymbol();
-
+            $escapedSymbol = preg_quote(trim($currencySymbol), '/');
+            
             // Get current store view id
             $currentStoreId = $this->storeManager->getStore()->getId();
 
-            // Get currency symbol position config. value for the current store view
-            $currencySymbolRight = $this->scopeConfig->getValue(
+            
+            $position = $this->scopeConfig->getValue(
                 self::XML_PATH_CURRENCY_SYMBOL_POSITION,
                 ScopeInterface::SCOPE_STORE,
                 $currentStoreId
-            );
+            ) ?? self::POSITION_DEFAULT;
 
-            // Only if currency symbol position is set to right, format price text
-            if ($currencySymbolRight) {
-                // The original $result string is already trimmed, so for the regex pattern to get a correct match
-                // we need to provide the currency symbol without any white space, and not $currencySymbol as is.
-                $trimmedCurrencySymbol = trim($currencySymbol);
+            return match ($position) {
+                self::POSITION_RIGHT => $this->moveSymbolRightIfNeeded($result, $escapedSymbol, $currencySymbol),
+                self::POSITION_LEFT => $this->moveSymbolLeftIfNeeded($result, $escapedSymbol, $currencySymbol),
+                default => $result,
+            };
 
-                $formattedResult = preg_replace(
-                    "/^$trimmedCurrencySymbol\s*(.+)$/",
-                    "$1$currencySymbol",
-                    $result
-                );
 
-                return $formattedResult ?: $result;
-            }
         } catch (CurrencyException $e) {
             $this->logger->debug('Currency Error on symbol retrieval: ' . $e->getMessage());
         } catch (NoSuchEntityException $e) {
             $this->logger->debug('No Entity Found on store retrieval: ' . $e->getMessage());
         }
 
+        return $result;
+    }
+
+    private function moveSymbolRightIfNeeded(string $result, string $escapedSymbol, string $rawSymbol): string
+    {
+        if (preg_match("/^{$escapedSymbol}\s?(.+)\$/", $result)) {
+            $replaced = preg_replace(
+                "/^{$escapedSymbol}\s?(.+)\$/",
+                "\$1{$rawSymbol}",
+                $result
+            );
+            return $replaced !== null && $replaced !== $result ? $replaced : $result;
+        }
+        return $result;
+    }
+
+    private function moveSymbolLeftIfNeeded(string $result, string $escapedSymbol, string $rawSymbol): string
+    {
+        if (preg_match("/^(.+?)\s?{$escapedSymbol}\$/", $result)) {
+            $replaced = preg_replace(
+                "/^(.+?)\s?{$escapedSymbol}\$/",
+                "{$rawSymbol} \$1",
+                $result
+            );
+            return $replaced !== null && $replaced !== $result ? $replaced : $result;
+        }
         return $result;
     }
 }
