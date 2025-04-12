@@ -7,6 +7,7 @@ use Magento\Framework\Locale\CurrencyInterface;
 use Magento\Framework\App\Config\ScopeConfigInterface;
 use Magento\Store\Model\StoreManagerInterface;
 use Magento\Store\Model\ScopeInterface;
+use EW\CurrencySymbolPosition\Model\Config\Source\CurrencySymbolPosition;
 use Magento\Framework\Currency\Exception\CurrencyException;
 use Magento\Framework\Exception\NoSuchEntityException;
 use Psr\Log\LoggerInterface;
@@ -38,30 +39,42 @@ class PositionCurrencySymbol
     {
         try {
             $currencySymbol = $this->localeCurrency->getCurrency($subject->getCode())->getSymbol();
+            $trimmedCurrencySymbol = trim($currencySymbol);
 
-            // Get current store view id
-            $currentStoreId = $this->storeManager->getStore()->getId();
+            // Check if $result indeed contains a currency symbol, otherwise there is nothing to format
+            if (str_contains($result, $trimmedCurrencySymbol)) {
+                // Get current store view id
+                $currentStoreId = $this->storeManager->getStore()->getId();
 
-            // Get currency symbol position config. value for the current store view
-            $currencySymbolRight = $this->scopeConfig->getValue(
-                self::XML_PATH_CURRENCY_SYMBOL_POSITION,
-                ScopeInterface::SCOPE_STORE,
-                $currentStoreId
-            );
-
-            // Only if currency symbol position is set to right, format price text
-            if ($currencySymbolRight) {
-                // The original $result string is already trimmed, so for the regex pattern to get a correct match
-                // we need to provide the currency symbol without any white space, and not $currencySymbol as is.
-                $trimmedCurrencySymbol = trim($currencySymbol);
-
-                $formattedResult = preg_replace(
-                    "/^$trimmedCurrencySymbol\s*(.+)$/",
-                    "$1$currencySymbol",
-                    $result
+                // Get currency symbol position config. value for the current store view
+                $currencySymbolPosition = (int)$this->scopeConfig->getValue(
+                    self::XML_PATH_CURRENCY_SYMBOL_POSITION,
+                    ScopeInterface::SCOPE_STORE,
+                    $currentStoreId
                 );
 
-                return $formattedResult ?: $result;
+                // Only if currency symbol position is set format price text
+                if ($currencySymbolPosition) {
+                    $pattern = sprintf(
+                        '/^(?:\%s)*\s*([^\s%s]+)\s*(?:\%s)*$/',
+                        $trimmedCurrencySymbol,
+                        $trimmedCurrencySymbol,
+                        $trimmedCurrencySymbol
+                    );
+                    $replacementFormat =
+                        $currencySymbolPosition === CurrencySymbolPosition::CURRENCY_SYMBOL_POSITION_RIGHT
+                        ? '$1%s'
+                        : '%s$1';
+                    $replacement = sprintf($replacementFormat, $currencySymbol);
+
+                    $formattedResult = preg_replace(
+                        $pattern,
+                        $replacement,
+                        $result
+                    );
+
+                    return $formattedResult ?: $result;
+                }
             }
         } catch (CurrencyException $e) {
             $this->logger->debug('Currency Error on symbol retrieval: ' . $e->getMessage());
