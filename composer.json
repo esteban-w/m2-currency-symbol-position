@@ -15,7 +15,7 @@
     "email": "info@ew-digital.com"
   }],
   "license": [
-    "MIT"
+    "OSL-3.0"
   ],
   "require": {
     "php": ">=8",

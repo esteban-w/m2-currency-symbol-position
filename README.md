@@ -17,4 +17,4 @@ should render to the right, as left is the default.
 License
 ----
 
-MIT
+OSL-3.0
